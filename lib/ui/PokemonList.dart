@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/db/PokeApi.dart';
+import 'package:provider/provider.dart';
+
+import '../db/PokeApi.dart';
+import '../provider/NavigationProvider.dart';
+import '../provider/FavoritePokemonsProvider.dart';
 
 final pokeAPI = PokeAPI();
 
@@ -93,16 +97,23 @@ class _PokemonDetails extends StatelessWidget {
   }
 }
 
-class _Pokemon extends StatelessWidget {
+class _Pokemon extends StatefulWidget {
   final String name;
 
   _Pokemon({
     @required this.name,
   }) : super();
 
+  @override
+  __PokemonState createState() => __PokemonState();
+}
+
+class __PokemonState extends State<_Pokemon> {
+  FavoritePokemonsProvider _favoritePokemonsProvider;
+
   Widget _title() {
     final text = Text(
-      '${name.toUpperCase()}',
+      '${widget.name.toUpperCase()} ',
       overflow: TextOverflow.ellipsis,
       maxLines: 1,
       softWrap: false,
@@ -117,6 +128,47 @@ class _Pokemon extends StatelessWidget {
     );
   }
 
+  Widget _favoraiteButton(BuildContext context) {
+    final checked = _favoritePokemonsProvider.list.contains(widget.name);
+    final icon = checked ? Icons.favorite : Icons.favorite_border;
+    final color = checked ? Colors.pink : Colors.grey;
+
+    final showSnakBar = ({String content, Function onClickUndo}) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(content),
+        duration: Duration(milliseconds: 1500),
+        action: SnackBarAction(
+          label: 'UNDO',
+          onPressed: onClickUndo,
+        ),
+      ));
+    };
+
+    final onTap = () {
+      if (checked) {
+        _favoritePokemonsProvider.delete(widget.name);
+        showSnakBar(
+          content: '${widget.name.toUpperCase()} is successfully deleted.',
+          onClickUndo: () => _favoritePokemonsProvider.add(widget.name),
+        );
+      } else {
+        _favoritePokemonsProvider.add(widget.name);
+        showSnakBar(
+          content: 'You like ${widget.name.toUpperCase()}!',
+          onClickUndo: () => _favoritePokemonsProvider.delete(widget.name),
+        );
+      }
+    };
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Icon(
+        icon,
+        color: color,
+      ),
+    );
+  }
+
   Widget _container({List<Widget> children}) {
     return Container(
       child: Column(children: children),
@@ -128,9 +180,13 @@ class _Pokemon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    _favoritePokemonsProvider = Provider.of<FavoritePokemonsProvider>(context);
     return _container(children: [
-      Row(children: [_title()]),
-      Row(children: [_PokemonDetails(name: name)]),
+      Row(children: [
+        _title(),
+        _favoraiteButton(context),
+      ]),
+      Row(children: [_PokemonDetails(name: widget.name)]),
     ]);
   }
 }
@@ -141,6 +197,9 @@ class PokemonList extends StatefulWidget {
 }
 
 class _PokemonListState extends State<PokemonList> {
+  NavigationProvider _navigationProvider;
+  FavoritePokemonsProvider _favoritePokemonsProvider;
+
   Widget _container({List<Widget> children}) {
     return Container(
       margin: EdgeInsets.only(top: 20),
@@ -157,20 +216,51 @@ class _PokemonListState extends State<PokemonList> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _pokemons(List<String> pokemonNames) {
+    return _container(
+      children: List<Widget>.generate(
+        pokemonNames.length,
+        (index) => _Pokemon(name: pokemonNames[index]),
+      ),
+    );
+  }
+
+  Widget _allPokemons() {
     return FutureBuilder(
       future: pokeAPI.loadPokemons(),
       builder: (BuildContext context, AsyncSnapshot snapshot) {
         final List<String> data = snapshot.data == null ? [] : snapshot.data;
-        print(data.length);
-        return _container(
-          children: List<Widget>.generate(
-            data.length,
-            (index) => _Pokemon(name: data[index]),
-          ),
-        );
+        return _pokemons(data);
       },
     );
+  }
+
+  Widget _favoritePokemons() {
+    final list = _favoritePokemonsProvider.list;
+
+    if (list.length > 0) {
+      return _pokemons(list);
+    }
+
+    return Center(
+      child: Text('You have no favorite pokèmons.'),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _navigationProvider = Provider.of<NavigationProvider>(context);
+    _favoritePokemonsProvider = Provider.of<FavoritePokemonsProvider>(context);
+
+    switch (_navigationProvider.curruntIndex) {
+      case 0:
+        return _allPokemons();
+
+      case 1:
+        return _favoritePokemons();
+
+      default:
+        return Center(child: Text('...ERROR...'));
+    }
   }
 }
