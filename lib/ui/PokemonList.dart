@@ -204,14 +204,11 @@ class _PokemonListState extends State<PokemonList> {
     return Container(
       margin: EdgeInsets.only(top: 20),
       child: NotificationListener(
-        child: ListView(children: children),
-        onNotification: (notification) {
-          if (notification is ScrollEndNotification) {
-            setState(() {});
-          }
-
-          return true;
-        },
+        child: ListView.builder(
+          itemBuilder: (context, index) {
+            return children.length > index ? children[index] : null;
+          },
+        ),
       ),
     );
   }
