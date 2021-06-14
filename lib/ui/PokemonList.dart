@@ -101,8 +101,9 @@ class _Pokemon extends StatefulWidget {
   final String name;
 
   _Pokemon({
+    Key key,
     @required this.name,
-  }) : super();
+  }) : super(key: key);
 
   @override
   __PokemonState createState() => __PokemonState();
@@ -217,7 +218,10 @@ class _PokemonListState extends State<PokemonList> {
     return _container(
       children: List<Widget>.generate(
         pokemonNames.length,
-        (index) => _Pokemon(name: pokemonNames[index]),
+        (index) => _Pokemon(
+          key: ValueKey(pokemonNames[index]),
+          name: pokemonNames[index],
+        ),
       ),
     );
   }
@@ -226,7 +230,7 @@ class _PokemonListState extends State<PokemonList> {
     return FutureBuilder(
       future: pokeAPI.loadPokemons(),
       builder: (BuildContext context, AsyncSnapshot snapshot) {
-        final List<String> data = snapshot.data == null ? [] : snapshot.data;
+        final List<String> data = snapshot.data ?? [];
         return _pokemons(data);
       },
     );
